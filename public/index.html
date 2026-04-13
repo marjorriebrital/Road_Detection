@@ -1,0 +1,623 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Road Condition Detector</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@400;600;700&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #f5f4f0;
+      --surface: #ffffff;
+      --surface2: #f0eeea;
+      --border: rgba(0,0,0,0.1);
+      --border2: rgba(0,0,0,0.18);
+      --text: #1a1a18;
+      --text2: #6b6b67;
+      --text3: #9b9b97;
+      --green: #1D9E75;
+      --green-light: #E1F5EE;
+      --green-dark: #0F6E56;
+      --amber: #EF9F27;
+      --amber-light: #FAEEDA;
+      --amber-dark: #854F0B;
+      --orange: #D85A30;
+      --orange-light: #FAECE7;
+      --orange-dark: #993C1D;
+      --red: #E24B4A;
+      --red-light: #FCEBEB;
+      --red-dark: #A32D2D;
+      --radius: 10px;
+      --radius-lg: 14px;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #141412;
+        --surface: #1e1e1b;
+        --surface2: #272724;
+        --border: rgba(255,255,255,0.08);
+        --border2: rgba(255,255,255,0.14);
+        --text: #f0ede8;
+        --text2: #9b9893;
+        --text3: #6b6866;
+        --green-light: #0a2e22;
+        --amber-light: #2a1f08;
+        --orange-light: #2a1408;
+        --red-light: #2a0d0d;
+      }
+    }
+
+    body {
+      font-family: 'Syne', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      padding: 0;
+    }
+
+    .topbar {
+      background: var(--surface);
+      border-bottom: 0.5px solid var(--border);
+      padding: 0 2rem;
+      height: 56px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+
+    .logo-icon {
+      width: 30px; height: 30px;
+      background: var(--green);
+      border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .logo-icon svg { width: 16px; height: 16px; }
+
+    .topbar-title {
+      font-size: 15px;
+      font-weight: 700;
+      letter-spacing: -0.3px;
+    }
+
+    .topbar-sub {
+      font-size: 12px;
+      color: var(--text2);
+      margin-left: 2px;
+    }
+
+    .main {
+      max-width: 860px;
+      margin: 0 auto;
+      padding: 2rem 1.5rem 4rem;
+    }
+
+    /* Upload */
+    .upload-zone {
+      border: 1.5px dashed var(--border2);
+      border-radius: var(--radius-lg);
+      padding: 2.5rem 2rem;
+      text-align: center;
+      cursor: pointer;
+      background: var(--surface);
+      position: relative;
+      transition: border-color 0.15s, background 0.15s;
+      margin-bottom: 1.25rem;
+    }
+
+    .upload-zone:hover, .upload-zone.drag-over {
+      border-color: var(--green);
+      background: var(--green-light);
+    }
+
+    .upload-zone input[type=file] {
+      position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%;
+    }
+
+    .upload-icon {
+      width: 44px; height: 44px;
+      background: var(--surface2);
+      border: 0.5px solid var(--border);
+      border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      margin: 0 auto 12px;
+    }
+
+    .upload-title {
+      font-size: 15px; font-weight: 600; margin-bottom: 5px;
+    }
+
+    .upload-sub {
+      font-size: 12px; color: var(--text2);
+    }
+
+    /* Image grid */
+    .image-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+      gap: 10px;
+      margin-bottom: 1.25rem;
+    }
+
+    .img-card {
+      border: 0.5px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      background: var(--surface);
+      position: relative;
+    }
+
+    .img-card img { width: 100%; height: 90px; object-fit: cover; display: block; }
+
+    .img-card .remove-btn {
+      position: absolute; top: 5px; right: 5px;
+      width: 20px; height: 20px;
+      background: rgba(0,0,0,0.6);
+      border: none; border-radius: 50%; cursor: pointer;
+      color: white; font-size: 11px;
+      display: flex; align-items: center; justify-content: center;
+      transition: background 0.1s;
+    }
+
+    .img-card .remove-btn:hover { background: var(--red); }
+
+    .img-label {
+      padding: 5px 8px;
+      font-size: 11px;
+      color: var(--text2);
+      font-family: 'DM Mono', monospace;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+
+    /* Summary bar */
+    .summary-bar {
+      display: none;
+      flex-wrap: wrap;
+      gap: 14px;
+      padding: 10px 16px;
+      background: var(--surface);
+      border-radius: var(--radius);
+      border: 0.5px solid var(--border);
+      margin-bottom: 1.25rem;
+    }
+
+    .summary-item {
+      display: flex; align-items: center; gap: 7px;
+      font-size: 12px; color: var(--text2);
+    }
+
+    .summary-dot { width: 8px; height: 8px; border-radius: 50%; }
+
+    /* Analyze button */
+    .analyze-btn {
+      width: 100%;
+      padding: 12px;
+      background: var(--green);
+      color: white;
+      border: none;
+      border-radius: var(--radius);
+      font-size: 14px; font-weight: 600;
+      font-family: 'Syne', sans-serif;
+      cursor: pointer;
+      transition: opacity 0.15s, transform 0.1s;
+      margin-bottom: 2rem;
+      letter-spacing: 0.2px;
+    }
+
+    .analyze-btn:hover:not(:disabled) { opacity: 0.88; }
+    .analyze-btn:active:not(:disabled) { transform: scale(0.99); }
+    .analyze-btn:disabled { opacity: 0.38; cursor: not-allowed; }
+
+    /* Results */
+    .results-area { display: flex; flex-direction: column; gap: 14px; }
+
+    .empty-state {
+      text-align: center;
+      padding: 2.5rem;
+      color: var(--text3);
+      font-size: 13px;
+      border: 0.5px dashed var(--border2);
+      border-radius: var(--radius-lg);
+    }
+
+    .result-card {
+      border: 0.5px solid var(--border);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+      background: var(--surface);
+      animation: fadeUp 0.3s ease both;
+    }
+
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(8px); }
+      to   { opacity: 1; transform: none; }
+    }
+
+    .result-header {
+      display: flex; align-items: center; gap: 10px;
+      padding: 12px 16px;
+      border-bottom: 0.5px solid var(--border);
+      background: var(--surface2);
+    }
+
+    .result-thumb {
+      width: 48px; height: 38px;
+      border-radius: 6px; object-fit: cover;
+      border: 0.5px solid var(--border);
+    }
+
+    .result-filename {
+      font-size: 12px; font-weight: 600;
+      font-family: 'DM Mono', monospace;
+      color: var(--text);
+      flex: 1; min-width: 0;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+
+    .status-badge {
+      flex-shrink: 0;
+      font-size: 10px; font-weight: 600;
+      padding: 3px 10px; border-radius: 20px;
+      font-family: 'DM Mono', monospace;
+      letter-spacing: 0.4px; text-transform: uppercase;
+    }
+
+    .badge-good     { background: var(--green-light);  color: var(--green-dark); }
+    .badge-moderate { background: var(--amber-light);  color: var(--amber-dark); }
+    .badge-poor     { background: var(--orange-light); color: var(--orange-dark); }
+    .badge-critical { background: var(--red-light);    color: var(--red-dark); }
+    .badge-pending  { background: var(--surface2);     color: var(--text2); }
+
+    .result-body { padding: 16px; }
+
+    .metrics-row {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      margin-bottom: 14px;
+    }
+
+    .metric {
+      background: var(--surface2);
+      border-radius: 8px;
+      padding: 9px 11px;
+    }
+
+    .metric-label { font-size: 11px; color: var(--text2); margin-bottom: 4px; }
+    .metric-value {
+      font-size: 15px; font-weight: 600;
+      font-family: 'DM Mono', monospace;
+    }
+
+    .metric-unit { font-size: 11px; font-weight: 400; color: var(--text2); }
+
+    .result-summary {
+      font-size: 13px; color: var(--text2);
+      line-height: 1.65; margin-bottom: 12px;
+    }
+
+    .issues-list { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+
+    .issue-tag {
+      font-size: 11px;
+      padding: 3px 9px; border-radius: 20px;
+      font-family: 'DM Mono', monospace;
+      background: var(--surface2);
+      color: var(--text2);
+      border: 0.5px solid var(--border);
+    }
+
+    .issue-tag.critical {
+      background: var(--red-light); color: var(--red-dark);
+      border-color: transparent;
+    }
+
+    .action-box {
+      font-size: 12px; color: var(--text2);
+      padding: 9px 12px;
+      background: var(--surface2);
+      border-radius: 8px;
+      border-left: 2px solid var(--green);
+      line-height: 1.5;
+    }
+
+    .action-box strong { color: var(--text); }
+
+    .loading-pulse {
+      display: flex; align-items: center; gap: 10px;
+      padding: 16px;
+      font-size: 13px; color: var(--text2);
+    }
+
+    .pulse-dots { display: flex; gap: 4px; }
+    .pulse-dots span {
+      width: 6px; height: 6px; border-radius: 50%;
+      background: var(--green);
+      animation: pulse 1.2s ease-in-out infinite;
+    }
+    .pulse-dots span:nth-child(2) { animation-delay: 0.2s; }
+    .pulse-dots span:nth-child(3) { animation-delay: 0.4s; }
+
+    @keyframes pulse {
+      0%,100% { opacity: 0.25; transform: scale(0.8); }
+      50%      { opacity: 1;    transform: scale(1); }
+    }
+
+    .error-msg {
+      padding: 14px 16px;
+      font-size: 13px;
+      color: var(--red-dark);
+      background: var(--red-light);
+    }
+
+    /* Score ring */
+    .score-ring { position: relative; width: 42px; height: 42px; }
+    .score-ring svg { transform: rotate(-90deg); }
+    .score-ring .score-num {
+      position: absolute; inset: 0;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 11px; font-weight: 600;
+      font-family: 'DM Mono', monospace;
+    }
+
+    @media (max-width: 480px) {
+      .main { padding: 1.25rem 1rem 3rem; }
+      .metrics-row { grid-template-columns: repeat(2, 1fr); }
+      .topbar-sub { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="logo-icon">
+    <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M4 17l2-8h12l2 8"/>
+      <path d="M3 17h18"/>
+      <circle cx="8" cy="17" r="1.5"/>
+      <circle cx="16" cy="17" r="1.5"/>
+    </svg>
+  </div>
+  <span class="topbar-title">RoadScan</span>
+  <span class="topbar-sub">— AI road condition detector</span>
+</div>
+
+<div class="main">
+
+  <div class="upload-zone" id="dropzone">
+    <input type="file" id="fileInput" accept="image/*" multiple />
+    <div class="upload-icon">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+        <polyline points="17 8 12 3 7 8"/>
+        <line x1="12" y1="3" x2="12" y2="15"/>
+      </svg>
+    </div>
+    <div class="upload-title">Drop road images here or click to browse</div>
+    <div class="upload-sub">JPG, PNG, WEBP — upload multiple for batch analysis</div>
+  </div>
+
+  <div class="image-grid" id="imageGrid"></div>
+
+  <div class="summary-bar" id="summaryBar">
+    <div class="summary-item"><div class="summary-dot" style="background:#1D9E75"></div><span id="cntGood">0 good</span></div>
+    <div class="summary-item"><div class="summary-dot" style="background:#EF9F27"></div><span id="cntMod">0 moderate</span></div>
+    <div class="summary-item"><div class="summary-dot" style="background:#D85A30"></div><span id="cntPoor">0 poor</span></div>
+    <div class="summary-item"><div class="summary-dot" style="background:#E24B4A"></div><span id="cntCrit">0 critical</span></div>
+  </div>
+
+  <button class="analyze-btn" id="analyzeBtn" disabled>Analyze Road Conditions</button>
+
+  <div class="results-area" id="resultsArea">
+    <div class="empty-state">Upload road images above to begin analysis</div>
+  </div>
+
+</div>
+
+<script>
+const fileInput  = document.getElementById('fileInput');
+const dropzone   = document.getElementById('dropzone');
+const imageGrid  = document.getElementById('imageGrid');
+const analyzeBtn = document.getElementById('analyzeBtn');
+const resultsArea= document.getElementById('resultsArea');
+const summaryBar = document.getElementById('summaryBar');
+
+let files   = [];
+let results = {};
+
+fileInput.addEventListener('change', e => addFiles(Array.from(e.target.files)));
+dropzone.addEventListener('dragover',  e => { e.preventDefault(); dropzone.classList.add('drag-over'); });
+dropzone.addEventListener('dragleave', ()  => dropzone.classList.remove('drag-over'));
+dropzone.addEventListener('drop', e => {
+  e.preventDefault(); dropzone.classList.remove('drag-over');
+  addFiles(Array.from(e.dataTransfer.files).filter(f => f.type.startsWith('image/')));
+});
+
+function addFiles(newFiles) {
+  newFiles.forEach(f => {
+    if (!files.find(x => x.name === f.name && x.size === f.size)) files.push(f);
+  });
+  renderGrid();
+  analyzeBtn.disabled = files.length === 0;
+  if (files.length > 0) resultsArea.innerHTML = '';
+}
+
+function renderGrid() {
+  imageGrid.innerHTML = '';
+  files.forEach((f, i) => {
+    const url  = URL.createObjectURL(f);
+    const card = document.createElement('div');
+    card.className = 'img-card';
+    card.innerHTML = `
+      <img src="${url}" alt="${f.name}" />
+      <button class="remove-btn" data-i="${i}" title="Remove">✕</button>
+      <div class="img-label">${f.name}</div>
+    `;
+    imageGrid.appendChild(card);
+  });
+  document.querySelectorAll('.remove-btn').forEach(btn =>
+    btn.addEventListener('click', e => {
+      files.splice(+e.currentTarget.dataset.i, 1);
+      renderGrid();
+      analyzeBtn.disabled = files.length === 0;
+    })
+  );
+}
+
+function toBase64(file) {
+  return new Promise((res, rej) => {
+    const r = new FileReader();
+    r.onload  = () => res(r.result.split(',')[1]);
+    r.onerror = rej;
+    r.readAsDataURL(file);
+  });
+}
+
+function badgeClass(condition = '') {
+  const c = condition.toLowerCase();
+  if (c.includes('good') || c.includes('excellent')) return 'badge-good';
+  if (c.includes('moderate') || c.includes('fair'))  return 'badge-moderate';
+  if (c.includes('poor'))                             return 'badge-poor';
+  if (c.includes('critical') || c.includes('danger') || c.includes('severe')) return 'badge-critical';
+  return 'badge-moderate';
+}
+
+function updateSummary() {
+  const vals = Object.values(results);
+  const cnt  = { good: 0, mod: 0, poor: 0, crit: 0 };
+  vals.forEach(v => {
+    const c = (v?.condition || '').toLowerCase();
+    if (c.includes('good') || c.includes('excellent'))                         cnt.good++;
+    else if (c.includes('moderate') || c.includes('fair'))                     cnt.mod++;
+    else if (c.includes('poor'))                                                cnt.poor++;
+    else if (c.includes('critical') || c.includes('danger') || c.includes('severe')) cnt.crit++;
+    else cnt.mod++;
+  });
+  document.getElementById('cntGood').textContent = `${cnt.good} good`;
+  document.getElementById('cntMod').textContent  = `${cnt.mod} moderate`;
+  document.getElementById('cntPoor').textContent = `${cnt.poor} poor`;
+  document.getElementById('cntCrit').textContent = `${cnt.crit} critical`;
+  summaryBar.style.display = vals.length > 0 ? 'flex' : 'none';
+}
+
+function scoreColor(s) {
+  if (s >= 75) return '#1D9E75';
+  if (s >= 50) return '#EF9F27';
+  if (s >= 25) return '#D85A30';
+  return '#E24B4A';
+}
+
+function renderResult(card, f, data) {
+  const bc   = badgeClass(data.condition);
+  card.querySelector('.status-badge').textContent = data.condition || 'Unknown';
+  card.querySelector('.status-badge').className   = `status-badge ${bc}`;
+
+  const score    = data.score ?? 0;
+  const circumf  = 2 * Math.PI * 16;
+  const dash     = (score / 100) * circumf;
+  const color    = scoreColor(score);
+
+  const issues   = (data.issues || []).map(i => `<span class="issue-tag">${i}</span>`).join('');
+  const critical = (data.critical_issues || []).map(i => `<span class="issue-tag critical">${i}</span>`).join('');
+
+  const body = document.createElement('div');
+  body.className = 'result-body';
+  body.innerHTML = `
+    <div class="metrics-row">
+      <div class="metric" style="display:flex;align-items:center;gap:10px;grid-column:span 1;">
+        <div class="score-ring">
+          <svg width="42" height="42" viewBox="0 0 42 42">
+            <circle cx="21" cy="21" r="16" fill="none" stroke="var(--border)" stroke-width="3"/>
+            <circle cx="21" cy="21" r="16" fill="none" stroke="${color}" stroke-width="3"
+              stroke-dasharray="${dash.toFixed(1)} ${circumf.toFixed(1)}" stroke-linecap="round"/>
+          </svg>
+          <div class="score-num" style="color:${color}">${score}</div>
+        </div>
+        <div>
+          <div class="metric-label">Score</div>
+          <div class="metric-value" style="font-size:13px;color:${color}">${data.condition}</div>
+        </div>
+      </div>
+      <div class="metric">
+        <div class="metric-label">Surface type</div>
+        <div class="metric-value" style="font-size:12px">${data.surface_type || '—'}</div>
+      </div>
+      <div class="metric">
+        <div class="metric-label">Distress level</div>
+        <div class="metric-value" style="font-size:12px">${data.distress_level || '—'}</div>
+      </div>
+    </div>
+    ${data.summary ? `<div class="result-summary">${data.summary}</div>` : ''}
+    ${(issues || critical) ? `<div class="issues-list">${critical}${issues}</div>` : ''}
+    ${data.recommended_action ? `<div class="action-box"><strong>Recommended action:</strong> ${data.recommended_action}</div>` : ''}
+  `;
+
+  card.querySelector('.loading-pulse').replaceWith(body);
+}
+
+analyzeBtn.addEventListener('click', async () => {
+  if (!files.length) return;
+  analyzeBtn.disabled    = true;
+  analyzeBtn.textContent = 'Analyzing…';
+  resultsArea.innerHTML  = '';
+  results = {};
+  summaryBar.style.display = 'none';
+
+  const cards = files.map((f, i) => {
+    const url  = URL.createObjectURL(f);
+    const card = document.createElement('div');
+    card.className = 'result-card';
+    card.id        = `rc-${i}`;
+    card.innerHTML = `
+      <div class="result-header">
+        <img class="result-thumb" src="${url}" alt="${f.name}" />
+        <span class="result-filename">${f.name}</span>
+        <span class="status-badge badge-pending">Analyzing…</span>
+      </div>
+      <div class="loading-pulse">
+        <div class="pulse-dots"><span></span><span></span><span></span></div>
+        Running road condition analysis
+      </div>
+    `;
+    resultsArea.appendChild(card);
+    return card;
+  });
+
+  await Promise.all(files.map(async (f, i) => {
+    try {
+      const b64  = await toBase64(f);
+      const resp = await fetch('/api/analyze', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ imageData: b64, mediaType: f.type || 'image/jpeg' }),
+      });
+      const data = await resp.json();
+      if (!resp.ok) throw new Error(data.error || 'API error');
+      results[i] = data;
+      renderResult(cards[i], f, data);
+    } catch (err) {
+      cards[i].querySelector('.status-badge').textContent = 'Error';
+      cards[i].querySelector('.status-badge').className   = 'status-badge badge-critical';
+      const errEl = document.createElement('div');
+      errEl.className = 'error-msg';
+      errEl.textContent = `Analysis failed: ${err.message}`;
+      cards[i].querySelector('.loading-pulse').replaceWith(errEl);
+    }
+    updateSummary();
+  }));
+
+  analyzeBtn.disabled    = false;
+  analyzeBtn.textContent = 'Re-analyze All';
+});
+</script>
+</body>
+</html>
