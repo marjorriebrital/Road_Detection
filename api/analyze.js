@@ -10,8 +10,13 @@ export default async function handler(req, res) {
   if (req.method === "OPTIONS") return res.status(200).end();
   if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
 
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) return res.status(500).json({ error: "GEMINI_API_KEY not configured in Vercel environment variables" });
+  const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
+  if (!apiKey) {
+    return res.status(500).json({
+      error:
+        "Missing API key. Set GEMINI_API_KEY (recommended) or GOOGLE_API_KEY in Vercel: Project → Settings → Environment Variables (Production/Preview/Development), then redeploy.",
+    });
+  }
 
   const { imageData, mediaType } = req.body;
   if (!imageData) return res.status(400).json({ error: "No image data provided" });

@@ -44,10 +44,13 @@ gh repo create road-detector --public --push
 
 ### 3. Add your Gemini API Key
 1. Vercel dashboard → your project → **Settings → Environment Variables**
-2. Name: `GEMINI_API_KEY`
+2. Name: `GEMINI_API_KEY` (recommended)
 3. Value: `AIzaSy...` (your actual key)
-4. Click **Save**
+4. Make sure you add it to **Production** (and usually **Preview** too)
+5. Click **Save**
 5. Go to **Deployments → ⋯ → Redeploy**
+
+The API also accepts `GOOGLE_API_KEY` as an alternative name.
 
 Your app is now live at `https://your-project.vercel.app` — free!
 
